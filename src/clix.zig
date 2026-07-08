@@ -668,6 +668,20 @@ fn setFlag(comptime T: type, flags: *T, comptime name: []const u8, value: bool) 
     }
 }
 
+pub const testing = if (builtin.is_test) struct {
+    pub fn windowStart(len: usize, selected: usize, page_size: usize) usize {
+        return selectionWindowStart(len, selected, page_size);
+    }
+
+    pub fn parseKey(reader: *std.Io.Reader) !Key {
+        return readKey(reader);
+    }
+
+    pub fn modeUsesColor(mode: ColorMode, environ_map: ?*const std.process.Environ.Map, escapes: bool) bool {
+        return colorEnabled(mode, environ_map, escapes);
+    }
+} else struct {};
+
 const WindowsRawMode = struct {
     input_handle: std.os.windows.HANDLE,
     output_handle: std.os.windows.HANDLE,
@@ -722,35 +736,3 @@ const WindowsRawMode = struct {
         _ = SetConsoleMode(self.output_handle, self.output_mode);
     }
 };
-
-test "selection window stays in bounds" {
-    try std.testing.expectEqual(@as(usize, 0), selectionWindowStart(3, 0, 10));
-    try std.testing.expectEqual(@as(usize, 0), selectionWindowStart(20, 0, 10));
-    try std.testing.expectEqual(@as(usize, 5), selectionWindowStart(20, 10, 10));
-    try std.testing.expectEqual(@as(usize, 10), selectionWindowStart(20, 19, 10));
-}
-
-test "read key recognizes common navigation sequences" {
-    var up: std.Io.Reader = .fixed("\x1b[A");
-    try std.testing.expectEqual(Key.up, try readKey(&up));
-
-    var down: std.Io.Reader = .fixed("j");
-    try std.testing.expectEqual(Key.down, try readKey(&down));
-
-    var page: std.Io.Reader = .fixed("\x1b[6~");
-    try std.testing.expectEqual(Key.page_down, try readKey(&page));
-
-    var home: std.Io.Reader = .fixed("\x1b[H");
-    try std.testing.expectEqual(Key.home, try readKey(&home));
-
-    var end: std.Io.Reader = .fixed("\x1bOF");
-    try std.testing.expectEqual(Key.end, try readKey(&end));
-}
-
-test "color mode honors explicit options" {
-    try std.testing.expect(colorEnabled(.always, null, true));
-    try std.testing.expect(!colorEnabled(.always, null, false));
-    try std.testing.expect(!colorEnabled(.never, null, true));
-    try std.testing.expect(colorEnabled(.auto, null, true));
-    try std.testing.expect(!colorEnabled(.auto, null, false));
-}
