@@ -13,7 +13,7 @@ pub fn build(b: *std.Build) void {
 
     const check_step = b.step("check", "Compile the library and tests");
     check_step.dependOn(&tests.step);
-    b.default_step.dependOn(check_step);
+    b.default_step.dependOn(&tests.step);
 
     const run_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run library tests");
